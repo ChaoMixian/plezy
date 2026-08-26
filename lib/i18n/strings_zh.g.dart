@@ -2079,6 +2079,9 @@ class Translations$addServer$zh extends Translations$addServer$en {
 	@override String localMediaBrowserServers({required Object product}) => '本地 ${product} 服务器';
 	@override String get username => '用户名';
 	@override String get password => '密码';
+	@override String get clientName => '客户端名称';
+	@override String get clientNameHelper => '部分服务器仅允许特定客户端访问，登录被拒时可尝试更改此项';
+	@override String get clientNameCustom => '自定义…';
 	@override String get signIn => '登录';
 	@override String get change => '更改';
 	@override String get required => '必填';
@@ -4604,6 +4607,9 @@ extension on TranslationsZh {
 			'addServer.localMediaBrowserServers' => ({required Object product}) => '本地 ${product} 服务器',
 			'addServer.username' => '用户名',
 			'addServer.password' => '密码',
+			'addServer.clientName' => '客户端名称',
+			'addServer.clientNameHelper' => '部分服务器仅允许特定客户端访问，登录被拒时可尝试更改此项',
+			'addServer.clientNameCustom' => '自定义…',
 			'addServer.signIn' => '登录',
 			'addServer.change' => '更改',
 			'addServer.required' => '必填',

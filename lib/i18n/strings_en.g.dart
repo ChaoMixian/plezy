@@ -5204,6 +5204,15 @@ class Translations$addServer$en {
 	/// en: 'Password'
 	String get password => 'Password';
 
+	/// en: 'Client name'
+	String get clientName => 'Client name';
+
+	/// en: 'Some servers only allow specific clients. Change this if sign-in is rejected.'
+	String get clientNameHelper => 'Some servers only allow specific clients. Change this if sign-in is rejected.';
+
+	/// en: 'Custom…'
+	String get clientNameCustom => 'Custom…';
+
 	/// en: 'Sign in'
 	String get signIn => 'Sign in';
 
@@ -8703,6 +8712,9 @@ extension on Translations {
 			'addServer.localMediaBrowserServers' => ({required Object product}) => 'Local ${product} servers',
 			'addServer.username' => 'Username',
 			'addServer.password' => 'Password',
+			'addServer.clientName' => 'Client name',
+			'addServer.clientNameHelper' => 'Some servers only allow specific clients. Change this if sign-in is rejected.',
+			'addServer.clientNameCustom' => 'Custom…',
 			'addServer.signIn' => 'Sign in',
 			'addServer.change' => 'Change',
 			'addServer.required' => 'Required',

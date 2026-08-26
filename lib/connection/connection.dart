@@ -195,6 +195,12 @@ class JellyfinConnection extends Connection {
   /// `Authorization: MediaBrowser DeviceId="..."` header).
   final String deviceId;
 
+  /// Client identity sent in the `Authorization: MediaBrowser Client="..."`
+  /// header. Some gateways in front of Emby servers reject sessions whose
+  /// client name is not on their allowlist, so it is chosen per server at
+  /// sign-in and must stay stable for the connection's lifetime.
+  final String clientName;
+
   /// Whether this user is a server admin (`/Users/{id}.Policy.IsAdministrator`).
   /// Captured at auth time so the UI can gate admin-only entries (delete,
   /// match/unmatch, edit metadata) without an extra round-trip.
@@ -217,6 +223,7 @@ class JellyfinConnection extends Connection {
     required this.userName,
     required this.accessToken,
     required this.deviceId,
+    this.clientName = 'Plezy',
     this.dialect = MediaBrowserDialect.jellyfin,
     this.isAdministrator = false,
     this.primaryImageTag,
@@ -273,6 +280,7 @@ class JellyfinConnection extends Connection {
     String? userName,
     String? accessToken,
     String? deviceId,
+    String? clientName,
     MediaBrowserDialect? dialect,
     bool? isAdministrator,
     String? primaryImageTag,
@@ -295,6 +303,7 @@ class JellyfinConnection extends Connection {
       userName: userName ?? this.userName,
       accessToken: accessToken ?? this.accessToken,
       deviceId: deviceId ?? this.deviceId,
+      clientName: clientName ?? this.clientName,
       dialect: dialect ?? this.dialect,
       isAdministrator: isAdministrator ?? this.isAdministrator,
       primaryImageTag: clearPrimaryImageTag ? null : (primaryImageTag ?? this.primaryImageTag),
@@ -317,6 +326,7 @@ class JellyfinConnection extends Connection {
       'userName': userName,
       'accessToken': accessToken,
       'deviceId': deviceId,
+      'clientName': clientName,
       'isAdministrator': isAdministrator,
       'primaryImageTag': primaryImageTag,
     };
@@ -346,6 +356,7 @@ class JellyfinConnection extends Connection {
       userName: json['userName'] as String? ?? '',
       accessToken: json['accessToken'] as String? ?? '',
       deviceId: json['deviceId'] as String? ?? '',
+      clientName: normalizeClientName(json['clientName']) ?? 'Plezy',
       isAdministrator: json['isAdministrator'] as bool? ?? false,
       primaryImageTag: normalizePrimaryImageTag(json['primaryImageTag']),
       createdAt: createdAt,
@@ -364,5 +375,12 @@ class JellyfinConnection extends Connection {
   static String? normalizePrimaryImageTag(Object? raw) {
     final tag = raw?.toString().trim();
     return tag == null || tag.isEmpty ? null : tag;
+  }
+
+  /// Tolerant read of the persisted client name: absent/blank from older
+  /// configs falls back to the default rather than bricking sign-in.
+  static String? normalizeClientName(Object? raw) {
+    final name = raw?.toString().trim();
+    return name == null || name.isEmpty ? null : name;
   }
 }

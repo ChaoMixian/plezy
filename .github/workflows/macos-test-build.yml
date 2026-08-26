@@ -1,0 +1,35 @@
+name: macOS test build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/client-name]
+
+jobs:
+  build-macos:
+    runs-on: macos-26
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          persist-credentials: false
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: 3.47.1
+          cache: true
+
+      - name: Build macOS app (debug, ad-hoc signed)
+        run: flutter build macos --debug
+
+      - name: Zip app bundle
+        run: |
+          cd build/macos/Build/Products/Debug
+          ditto -c -k --keepParent Plezy.app plezy-macos-debug.zip
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: plezy-macos-debug
+          path: build/macos/Build/Products/Debug/plezy-macos-debug.zip

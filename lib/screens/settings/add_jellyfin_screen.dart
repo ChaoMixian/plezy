@@ -30,6 +30,8 @@ import '../../utils/app_logger.dart';
 import '../../utils/device_identity.dart';
 import '../../utils/platform_detector.dart';
 import '../../widgets/focused_scroll_scaffold.dart';
+import '../../widgets/app_menu.dart';
+import '../../widgets/focusable_popup_menu_button.dart';
 import '../../widgets/loading_indicator_box.dart';
 import '../../widgets/quick_connect_code_panel.dart';
 import '../profile/profile_switch_screen.dart';
@@ -105,9 +107,22 @@ class AddJellyfinScreen extends StatefulWidget {
 
 class _AddJellyfinScreenState extends State<AddJellyfinScreen>
     with AsyncFormStateMixin, QuickConnectFlowMixin, ControllerDisposerMixin {
+  /// Client names some Emby gateways whitelist. `''` selects the free-form
+  /// field; product names are intentionally untranslated.
+  static const List<String> _clientNamePresets = <String>[
+    'Plezy',
+    'Emby for iOS',
+    'Emby for Android',
+    'Emby Web',
+    'Infuse',
+    'Fileball',
+    'Senplayer',
+  ];
+
   late final _urlController = createTextEditingController();
   late final _usernameController = createTextEditingController();
   late final _passwordController = createTextEditingController();
+  late final _customClientNameController = createTextEditingController();
   final _urlFocus = FocusNode(debugLabel: 'AddJellyfin:Url');
   final _findServerFocus = FocusNode(debugLabel: 'AddJellyfin:FindServer');
   final _changeServerFocus = FocusNode(debugLabel: 'AddJellyfin:ChangeServer');
@@ -116,6 +131,8 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen>
   // act on `textInputAction: next` automatically but TV remotes / hardware
   // keyboards need the explicit `onFieldSubmitted` handler below.
   final _passwordFocus = FocusNode(debugLabel: 'AddJellyfin:Password');
+  final _clientNameFocus = FocusNode(debugLabel: 'AddJellyfin:ClientName');
+  final _customClientNameFocus = FocusNode(debugLabel: 'AddJellyfin:CustomClientName');
   final _signInFocus = FocusNode(debugLabel: 'AddJellyfin:SignIn');
   final _quickConnectFocus = FocusNode(debugLabel: 'AddJellyfin:QuickConnect');
   final _cancelQuickConnectFocus = FocusNode(debugLabel: 'AddJellyfin:CancelQuickConnect');
@@ -128,6 +145,16 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen>
   bool _isDiscoveringLocalServers = true;
   bool _quickConnectEnabled = false;
   int _localDiscoveryAttemptId = 0;
+
+  /// Selected preset client name, or `''` when the custom field is active.
+  String _selectedClientPreset = 'Plezy';
+
+  bool get _customClientSelected => _selectedClientPreset.isEmpty;
+
+  /// Raw, not header-sanitized: [buildJellyfinAuthHeader] percent-encodes and
+  /// falls back to `'Plezy'` when empty.
+  String get _clientName =>
+      _customClientSelected ? _customClientNameController.text.trim() : _selectedClientPreset;
 
   @override
   void initState() {
@@ -145,6 +172,8 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen>
     _changeServerFocus.dispose();
     _usernameFocus.dispose();
     _passwordFocus.dispose();
+    _clientNameFocus.dispose();
+    _customClientNameFocus.dispose();
     _signInFocus.dispose();
     _quickConnectFocus.dispose();
     _cancelQuickConnectFocus.dispose();
@@ -449,7 +478,7 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen>
     final clientVersion = await resolveJellyfinClientVersion();
     final deviceName = await _resolveDeviceName();
     return JellyfinConnectionAuthService(
-      clientName: 'Plezy',
+      clientName: _clientName,
       clientVersion: clientVersion,
       deviceName: deviceName,
       dialect: widget.dialect,
@@ -495,6 +524,69 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen>
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  /// Client-name picker styled like the surrounding form fields. Gateways in
+  /// front of some Emby servers reject sessions whose `Client` header value is
+  /// not on their allowlist; choosing an allowed client name here sends it in
+  /// the auth header and persists it on the connection for all later requests.
+  Widget _buildClientNameField() {
+    final effective = _clientName;
+    final display = _customClientSelected
+        ? (effective.isEmpty ? t.addServer.clientNameCustom : effective)
+        : _selectedClientPreset;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InputDecorator(
+          decoration: InputDecoration(
+            labelText: t.addServer.clientName,
+            helperText: t.addServer.clientNameHelper,
+            helperMaxLines: 3,
+            prefixIcon: const AppIcon(Symbols.devices_rounded, fill: 1),
+          ),
+          child: FocusablePopupMenuButton<String>(
+            focusNode: _clientNameFocus,
+            enabled: !busy,
+            borderRadius: 8,
+            tooltip: t.addServer.clientName,
+            semanticLabel: t.addServer.clientName,
+            semanticValue: display,
+            onNavigateUp: () => _passwordFocus.requestFocus(),
+            onNavigateDown: _customClientSelected ? () => _customClientNameFocus.requestFocus() : null,
+            onSelected: (value) => setState(() => _selectedClientPreset = value),
+            itemBuilder: (_) => [
+              for (final preset in _clientNamePresets)
+                AppMenuItem(value: preset, label: preset, selected: preset == _selectedClientPreset),
+              AppMenuItem(value: '', label: t.addServer.clientNameCustom, selected: _customClientSelected),
+            ],
+            child: Row(
+              children: [
+                Expanded(child: Text(display, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                const AppIcon(Symbols.arrow_drop_down_rounded, fill: 1),
+              ],
+            ),
+          ),
+        ),
+        if (_customClientSelected) ...[
+          const SizedBox(height: 12),
+          FocusableTextFormField(
+            controller: _customClientNameController,
+            focusNode: _customClientNameFocus,
+            autocorrect: false,
+            enableSuggestions: false,
+            enabled: !busy,
+            onNavigateUp: () => _clientNameFocus.requestFocus(),
+            textInputAction: TextInputAction.done,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: t.addServer.clientNameCustom,
+              prefixIcon: const AppIcon(Symbols.edit_rounded, fill: 1),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -584,6 +676,8 @@ class _AddJellyfinScreenState extends State<AddJellyfinScreen>
           // Empty passwords are valid on some MediaBrowser servers, so don't
           // require a value.
         ),
+        const SizedBox(height: 12),
+        _buildClientNameField(),
         const SizedBox(height: 16),
         FocusableButton(
           focusNode: _signInFocus,

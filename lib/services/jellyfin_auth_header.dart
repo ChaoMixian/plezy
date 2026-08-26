@@ -1,17 +1,20 @@
 import '../utils/device_identity.dart';
 
 /// Builds the `MediaBrowser` Authorization header value understood by both
-/// Jellyfin and Emby. Every field value is percent-encoded, and the server
-/// reverses that encoding while parsing the header. The same value is used at
-/// auth time and on every authenticated request so either dialect sees a
-/// consistent client identity.
+/// Jellyfin and Emby. Field values only percent-encode what the header cannot
+/// carry verbatim — quotes, commas, `%`, and anything outside printable ASCII
+/// — and the server reverses that encoding while parsing the header. Spaces
+/// and other printable ASCII stay raw: official clients send them verbatim
+/// (e.g. `Client="Emby for iOS"`), and allowlisting gateways in front of Emby
+/// servers string-match the raw value, so `Emby%20for%20iOS` would be rejected
+/// as an unknown client.
 ///
-/// Encoding is what keeps the header sendable at all. A device name like
-/// `Bjørn PC` cannot travel verbatim: `dart:io` rejects header values above
-/// 0x7F outright, and CFNetwork puts the raw code unit on the wire as a
+/// Encoding non-ASCII is what keeps the header sendable at all. A device name
+/// like `Bjørn PC` cannot travel verbatim: `dart:io` rejects header values
+/// above 0x7F outright, and CFNetwork puts the raw code unit on the wire as a
 /// Latin-1 byte, which the server rejects as a malformed header before the
-/// request is routed. It also removes the grammar hazards the header has no
-/// escape for: quotes, commas, and `=` inside a value.
+/// request is routed. Encoding also removes the grammar hazards the header
+/// has no escape for: quotes, commas, and `=` inside a value.
 ///
 /// Both dialects require non-empty client, device, and version fields when
 /// creating a session, so those values use stable fallbacks. An empty device
@@ -25,7 +28,7 @@ String buildJellyfinAuthHeader({
   required String deviceId,
   String? accessToken,
 }) {
-  String field(String name, String value) => '$name="${Uri.encodeComponent(value)}"';
+  String field(String name, String value) => '$name="${_escapeFieldValue(value)}"';
 
   final client = _meaningful(clientName);
   final effectiveClient = client.isEmpty ? 'Plezy' : client;
@@ -45,6 +48,18 @@ String buildJellyfinAuthHeader({
 }
 
 final RegExp _controlCharacters = RegExp(r'[\x00-\x1f\x7f-\x9f]');
+
+/// Escape only the characters the quoted-field grammar or the transport layer
+/// cannot carry; everything else (notably spaces) goes verbatim.
+String _escapeFieldValue(String value) {
+  const escapes = {0x22 /* " */, 0x25 /* % */, 0x2c /* , */, 0x3d /* = */};
+  final buffer = StringBuffer();
+  for (final rune in value.runes) {
+    final mustEscape = escapes.contains(rune) || rune < 0x20 || rune > 0x7e;
+    buffer.write(mustEscape ? Uri.encodeComponent(String.fromCharCode(rune)) : String.fromCharCode(rune));
+  }
+  return buffer.toString();
+}
 
 /// Percent-encoding makes any byte transportable, so the only values worth
 /// filtering are the ones that carry no identity at all — a name of control

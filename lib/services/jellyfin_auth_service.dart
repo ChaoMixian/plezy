@@ -450,6 +450,7 @@ class JellyfinConnectionAuthService {
       userName: userName,
       accessToken: accessToken,
       deviceId: deviceId,
+      clientName: clientName,
       dialect: info.dialect ?? dialect,
       isAdministrator: isAdministrator,
       primaryImageTag: primaryImageTag,
