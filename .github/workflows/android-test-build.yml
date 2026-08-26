@@ -1,0 +1,43 @@
+name: Android test build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/client-name]
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: 3.47.1
+          cache: true
+
+      - name: Build release APKs (split per ABI)
+        run: flutter build apk --release --split-per-abi
+
+      - name: Sign APKs with generated keystore
+        run: |
+          keytool -genkeypair -v -keystore test-release.keystore \
+            -alias plezy -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass plezy-test-store -keypass plezy-test-store \
+            -dname "CN=Plezy Test Build, O=fork"
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -V | tail -1)
+          for apk in build/app/outputs/flutter-apk/*.apk; do
+            "$APKSIGNER" sign --ks test-release.keystore \
+              --ks-pass pass:plezy-test-store --key-pass pass:plezy-test-store \
+              --out "${apk%.apk}-signed.apk" "$apk"
+          done
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: plezy-android-release
+          path: build/app/outputs/flutter-apk/*-signed.apk
