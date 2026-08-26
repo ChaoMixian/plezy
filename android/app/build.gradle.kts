@@ -452,6 +452,9 @@ android {
   lint {
     // Enforce the app-owned minSdk boundary without auditing upstream AndroidX.
     checkDependencies = false
+    // lintVital's analyzer crashes on CI runners (Gradle file-watcher bug);
+    // release lint adds nothing here since checkOnly is just NewApi.
+    checkReleaseBuilds = false
     checkOnly += setOf("NewApi")
   }
 }
