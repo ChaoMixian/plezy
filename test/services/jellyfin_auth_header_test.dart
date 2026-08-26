@@ -26,7 +26,7 @@ void main() {
       );
       expect(
         header,
-        'MediaBrowser Client="Plezy", Device="Living%20Room%20TV", DeviceId="dev-1", Version="1.2.3", Token="tok"',
+        'MediaBrowser Client="Plezy", Device="Living Room TV", DeviceId="dev-1", Version="1.2.3", Token="tok"',
       );
     });
 
