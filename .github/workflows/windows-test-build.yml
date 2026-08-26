@@ -2,6 +2,8 @@ name: Windows test build
 
 on:
   workflow_dispatch:
+  push:
+    branches: [feat/client-name]
 
 jobs:
   build-windows:
